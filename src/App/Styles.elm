@@ -14,6 +14,7 @@ type Styles
     | App
     | Logo
     | NavItem
+    | Button
     | TopBar
     | SongItem
     | ChordItem ActiveInactive
@@ -45,6 +46,21 @@ stylesheet =
             [ Border.bottom 3
             , Border.solid
             , Color.border appColor.primary
+            , S.hover [ Color.background appColor.secondary ]
+            , Transition.transitions
+                [ { delay = 0
+                  , duration = 500
+                  , easing = "ease-in-out"
+                  , props = [ "background" ]
+                  }
+                ]
+            ]
+        , S.style Button
+            [ Color.border appColor.primary
+            , Color.background appColor.lightPrimary
+            , Color.text appColor.primary
+            , Border.all 2
+            , Shadow.simple
             , S.hover [ Color.background appColor.secondary ]
             , Transition.transitions
                 [ { delay = 0

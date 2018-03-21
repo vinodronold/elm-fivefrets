@@ -2,6 +2,7 @@ module App.View exposing (view)
 
 import App.Model as M
 import App.Styles as S
+import App.Utils as U
 import Element as E
 import Element.Attributes as A
 import Element.Events as Event
@@ -89,14 +90,43 @@ ytImgUrl id =
     "https://i.ytimg.com/vi/" ++ id ++ "/hqdefault.jpg"
 
 
-playSong : M.CurrentSong -> E.Element S.Styles variation msg
-playSong currSong =
-    case currSong of
+playSong : M.CurrentSong -> E.Element S.Styles variation M.Msg
+playSong { song, playerStatus } =
+    case song of
         Nothing ->
             E.el S.None [] <| E.text "No Songs Selected. Please go back to select a song"
 
         Just song ->
-            displayChords song
+            E.column S.None [] [ displayChords song, displayControl playerStatus ]
+
+
+displayControl : M.PlayerStatus -> E.Element S.Styles variation M.Msg
+displayControl playerStatus =
+    E.row S.None [ A.spacing 10, A.padding 20, A.center ] <| controlButtons playerStatus
+
+
+controlButtons : M.PlayerStatus -> List (E.Element S.Styles variation M.Msg)
+controlButtons playerStatus =
+    case playerStatus of
+        M.NotStarted ->
+            [ U.button "Play" (M.ChangePlayerStatus M.Playing)
+            , U.button "Stop disabled" (M.ChangePlayerStatus M.Stopped)
+            ]
+
+        M.Playing ->
+            [ U.button "Pause" (M.ChangePlayerStatus M.Paused)
+            , U.button "Stop" (M.ChangePlayerStatus M.Stopped)
+            ]
+
+        M.Paused ->
+            [ U.button "Play" (M.ChangePlayerStatus M.Playing)
+            , U.button "Stop disabled" (M.ChangePlayerStatus M.Stopped)
+            ]
+
+        M.Stopped ->
+            [ U.button "Play" (M.ChangePlayerStatus M.Playing)
+            , U.button "Stop disabled" (M.ChangePlayerStatus M.Stopped)
+            ]
 
 
 displayChords : M.Song -> E.Element S.Styles variation msg
@@ -105,36 +135,36 @@ displayChords song =
         [ A.spacing 10 ]
         { columns = List.repeat 8 A.fill
         , rows = []
-        , cells = chordsGridCells song.chordSeqence
+        , cells = chordsGridCells song.sequence
         }
 
 
-chordsGridCells : M.ChordSequence -> List (E.OnGrid (E.Element S.Styles variation msg))
-chordsGridCells chordSequence =
+chordsGridCells : M.Sequence -> List (E.OnGrid (E.Element S.Styles variation msg))
+chordsGridCells sequence =
     let
         prevChords =
-            List.indexedMap (mapChords S.Inactive 0) chordSequence.prev
+            List.indexedMap (mapChords S.Inactive 0) sequence.prev
 
         ( nextChordStart, currChord ) =
-            case chordSequence.curr of
+            case sequence.curr of
                 Nothing ->
-                    ( List.length chordSequence.prev
+                    ( List.length sequence.prev
                     , []
                     )
 
                 Just chord ->
-                    ( List.length chordSequence.prev + 1
-                    , List.indexedMap (mapChords S.Active <| List.length chordSequence.prev) <| chord :: []
+                    ( List.length sequence.prev + 1
+                    , List.indexedMap (mapChords S.Active <| List.length sequence.prev) <| chord :: []
                     )
 
         nextChords =
-            List.indexedMap (mapChords S.Inactive nextChordStart) chordSequence.next
+            List.indexedMap (mapChords S.Inactive nextChordStart) sequence.next
     in
     prevChords ++ currChord ++ nextChords
 
 
-mapChords : S.ActiveInactive -> Int -> Int -> M.Chord -> E.OnGrid (E.Element S.Styles variation msg)
-mapChords activeInactive start idx chord =
+mapChords : S.ActiveInactive -> Int -> Int -> M.ChordTime -> E.OnGrid (E.Element S.Styles variation msg)
+mapChords activeInactive start idx chordTime =
     E.cell
         { start = ( (start + idx) % 8, (start + idx) // 8 )
         , width = 1
@@ -144,8 +174,78 @@ mapChords activeInactive start idx chord =
                 [ A.paddingXY 0 10
                 , A.inlineStyle [ ( "text-align", "center" ) ]
                 ]
-                (E.text <| "A" ++ (toString <| start + idx))
+                (E.text <| chordName chordTime.chord)
         }
+
+
+chordName : M.Chord -> String
+chordName ( note, quality ) =
+    noteToString note ++ qualityToString quality
+
+
+noteToString : M.Note -> String
+noteToString note =
+    case note of
+        M.A ->
+            "A"
+
+        M.As ->
+            "A#"
+
+        M.Bf ->
+            "Bb"
+
+        M.B ->
+            "B"
+
+        M.C ->
+            "C"
+
+        M.Cs ->
+            "C#"
+
+        M.Df ->
+            "Db"
+
+        M.D ->
+            "D"
+
+        M.Ds ->
+            "D#"
+
+        M.Ef ->
+            "Eb"
+
+        M.E ->
+            "E"
+
+        M.F ->
+            "F"
+
+        M.Fs ->
+            "F#"
+
+        M.Gf ->
+            "Gb"
+
+        M.G ->
+            "G"
+
+        M.Gs ->
+            "G#"
+
+        M.Af ->
+            "Ab"
+
+
+qualityToString : M.Quality -> String
+qualityToString q =
+    case q of
+        M.Major ->
+            ""
+
+        M.Minor ->
+            "m"
 
 
 
