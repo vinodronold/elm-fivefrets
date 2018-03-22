@@ -4,22 +4,24 @@ import App.Ports as P
 import Time
 
 
-type alias Model =
-    { currPage : Page
-    , currSong : CurrentSong
-    , songs : List Song
-    , test : String
-    }
-
-
 type Page
     = Home
     | Play
 
 
-type alias CurrentSong =
-    { song : Maybe Song
+type alias Model =
+    { currPage : Page
+    , currSong : Maybe Song
     , playerStatus : PlayerStatus
+    , songs : List Song
+    , test : String
+    }
+
+
+type alias CurrentSong a =
+    { a
+        | currSong : Maybe Song
+        , playerStatus : PlayerStatus
     }
 
 
@@ -33,22 +35,22 @@ type PlayerStatus
 type alias Song =
     { id : String
     , title : String
-    , sequence : Sequence
+    , playedChords : List ChordTime
+    , currChord : Maybe ChordTime
+    , nextChords : List ChordTime
     }
 
 
-type alias Sequence =
-    { prev : List ChordTime
-    , curr : Maybe ChordTime
-    , next : List ChordTime
+type alias Sequence a =
+    { a
+        | playedChords : List ChordTime
+        , currChord : Maybe ChordTime
+        , nextChords : List ChordTime
     }
 
 
 type alias ChordTime =
-    { id : Int
-    , chord : Chord
-    , time : Float
-    }
+    ( Chord, Float )
 
 
 type alias Chord =
@@ -95,7 +97,8 @@ type Msg
 init : ( Model, Cmd Msg )
 init =
     Model Home
-        (CurrentSong Nothing NotStarted)
+        Nothing
+        NotStarted
         [ sampleSong, sampleSong ]
         ""
         ! [ P.sendDataToJS P.ToJSTest ]
@@ -109,10 +112,10 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         GoToSong song ->
-            { model | currPage = Play, currSong = CurrentSong (Just song) NotStarted } ! []
+            { model | currPage = Play, currSong = Just song, playerStatus = NotStarted } ! []
 
         ChangePlayerStatus playerStatus ->
-            { model | currSong = CurrentSong model.currSong.song playerStatus } ! []
+            { model | playerStatus = playerStatus } ! []
 
         OutsideData dataFromJS ->
             case dataFromJS of
@@ -125,47 +128,45 @@ update msg model =
         Tick _ ->
             let
                 currSong =
-                    case model.currSong.playerStatus of
+                    case model.playerStatus of
                         Playing ->
-                            case model.currSong.song of
+                            case model.currSong of
                                 Nothing ->
                                     Nothing
 
                                 Just song ->
-                                    Just
-                                        (Song song.id
-                                            song.title
-                                            (nextChordSequence song.sequence)
-                                        )
+                                    Just <| nextChordSequence song
 
                         _ ->
-                            model.currSong.song
+                            model.currSong
             in
-            { model | currSong = CurrentSong currSong model.currSong.playerStatus } ! []
+            { model | currSong = currSong } ! []
 
 
-nextChordSequence : Sequence -> Sequence
-nextChordSequence chordSeq =
+nextChordSequence : Sequence a -> Sequence a
+nextChordSequence song =
     let
-        getprev =
-            case chordSeq.curr of
+        getplayed : List ChordTime
+        getplayed =
+            case song.currChord of
                 Nothing ->
                     []
 
                 Just chord ->
-                    chordSeq.prev ++ chord :: []
+                    song.playedChords ++ chord :: []
 
-        ( prev, curr, next ) =
-            case chordSeq.next of
+        ( played, curr, next ) =
+            case song.nextChords of
                 x :: xs ->
-                    ( getprev, Just x, xs )
+                    ( getplayed, Just x, xs )
 
                 [] ->
-                    ( [], Nothing, getprev )
+                    ( [], Nothing, getplayed )
     in
-    { prev = prev
-    , curr = curr
-    , next = next
+    { song
+        | playedChords = played
+        , currChord = curr
+        , nextChords = next
     }
 
 
@@ -202,33 +203,29 @@ subTimer model =
 
 sampleSong : Song
 sampleSong =
-    Song "Title 1" "1" sampleChordSeq
+    Song "Title 1" "1" [] Nothing nextChords
 
 
-sampleChordSeq : Sequence
-sampleChordSeq =
-    { prev = []
-    , curr = Nothing
-    , next =
-        [ ChordTime 1 ( A, Minor ) 1.0
-        , ChordTime 2 ( B, Major ) 1.0
-        , ChordTime 3 ( B, Major ) 1.0
-        , ChordTime 4 ( D, Minor ) 1.0
-        , ChordTime 5 ( E, Major ) 1.0
-        , ChordTime 6 ( F, Major ) 1.0
-        , ChordTime 7 ( G, Major ) 1.0
-        , ChordTime 8 ( A, Major ) 1.0
-        , ChordTime 9 ( B, Major ) 1.0
-        , ChordTime 10 ( C, Major ) 1.0
-        , ChordTime 11 ( Cs, Minor ) 1.0
-        , ChordTime 12 ( Ds, Major ) 1.0
-        , ChordTime 13 ( Fs, Major ) 1.0
-        , ChordTime 14 ( Bf, Minor ) 1.0
-        , ChordTime 15 ( B, Major ) 1.0
-        , ChordTime 16 ( C, Major ) 1.0
-        , ChordTime 17 ( D, Major ) 1.0
-        , ChordTime 18 ( E, Major ) 1.0
-        , ChordTime 19 ( F, Minor ) 1.0
-        , ChordTime 20 ( G, Major ) 1.0
-        ]
-    }
+nextChords : List ChordTime
+nextChords =
+    [ ( ( A, Minor ), 1.0 )
+    , ( ( B, Major ), 1.0 )
+    , ( ( B, Major ), 1.0 )
+    , ( ( D, Minor ), 1.0 )
+    , ( ( E, Major ), 1.0 )
+    , ( ( F, Major ), 1.0 )
+    , ( ( G, Major ), 1.0 )
+    , ( ( A, Major ), 1.0 )
+    , ( ( B, Major ), 1.0 )
+    , ( ( C, Major ), 1.0 )
+    , ( ( Cs, Minor ), 1.0 )
+    , ( ( Ds, Major ), 1.0 )
+    , ( ( Fs, Major ), 1.0 )
+    , ( ( Bf, Minor ), 1.0 )
+    , ( ( B, Major ), 1.0 )
+    , ( ( C, Major ), 1.0 )
+    , ( ( D, Major ), 1.0 )
+    , ( ( E, Major ), 1.0 )
+    , ( ( F, Minor ), 1.0 )
+    , ( ( G, Major ), 1.0 )
+    ]

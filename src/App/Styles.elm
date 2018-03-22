@@ -14,7 +14,7 @@ type Styles
     | App
     | Logo
     | NavItem
-    | Button
+    | Button ActiveInactive
     | TopBar
     | SongItem
     | ChordItem ActiveInactive
@@ -23,6 +23,10 @@ type Styles
 type ActiveInactive
     = Active
     | Inactive
+
+
+type Disabled
+    = Disabled
 
 
 stylesheet : S.StyleSheet Styles variation
@@ -55,7 +59,7 @@ stylesheet =
                   }
                 ]
             ]
-        , S.style Button
+        , S.style (Button Active)
             [ Color.border appColor.primary
             , Color.background appColor.lightPrimary
             , Color.text appColor.primary
@@ -69,6 +73,13 @@ stylesheet =
                   , props = [ "background" ]
                   }
                 ]
+            ]
+        , S.style (Button Inactive)
+            [ Color.border appColor.lightPrimary
+            , Color.text appColor.lightPrimary
+            , Border.all 2
+            , Shadow.simple
+            , S.cursor "not-allowed"
             ]
         , S.style TopBar
             [ Color.background appColor.primary
@@ -121,3 +132,25 @@ appColor =
     , secondary = rgba 255 212 84 1
     , background = rgba 255 255 255 1
     }
+
+
+
+--- HELPER FN ---
+
+
+baseButtonStyles : List (S.Property class variation)
+baseButtonStyles =
+    [ Color.border appColor.primary
+    , Color.background appColor.lightPrimary
+    , Color.text appColor.primary
+    , Border.all 2
+    , Shadow.simple
+    , S.hover [ Color.background appColor.secondary ]
+    , Transition.transitions
+        [ { delay = 0
+          , duration = 500
+          , easing = "ease-in-out"
+          , props = [ "background" ]
+          }
+        ]
+    ]

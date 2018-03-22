@@ -55,7 +55,7 @@ appPage model =
             songList model.songs
 
         M.Play ->
-            playSong model.currSong
+            playSong model
 
 
 topBar : String -> E.Element S.Styles variation M.Msg
@@ -90,9 +90,9 @@ ytImgUrl id =
     "https://i.ytimg.com/vi/" ++ id ++ "/hqdefault.jpg"
 
 
-playSong : M.CurrentSong -> E.Element S.Styles variation M.Msg
-playSong { song, playerStatus } =
-    case song of
+playSong : M.CurrentSong a -> E.Element S.Styles variation M.Msg
+playSong { currSong, playerStatus } =
+    case currSong of
         Nothing ->
             E.el S.None [] <| E.text "No Songs Selected. Please go back to select a song"
 
@@ -110,7 +110,7 @@ controlButtons playerStatus =
     case playerStatus of
         M.NotStarted ->
             [ U.button "Play" (M.ChangePlayerStatus M.Playing)
-            , U.button "Stop disabled" (M.ChangePlayerStatus M.Stopped)
+            , U.disabledButton "Stop"
             ]
 
         M.Playing ->
@@ -120,12 +120,12 @@ controlButtons playerStatus =
 
         M.Paused ->
             [ U.button "Play" (M.ChangePlayerStatus M.Playing)
-            , U.button "Stop disabled" (M.ChangePlayerStatus M.Stopped)
+            , U.button "Stop" (M.ChangePlayerStatus M.Stopped)
             ]
 
         M.Stopped ->
             [ U.button "Play" (M.ChangePlayerStatus M.Playing)
-            , U.button "Stop disabled" (M.ChangePlayerStatus M.Stopped)
+            , U.disabledButton "Stop"
             ]
 
 
@@ -135,36 +135,36 @@ displayChords song =
         [ A.spacing 10 ]
         { columns = List.repeat 8 A.fill
         , rows = []
-        , cells = chordsGridCells song.sequence
+        , cells = chordsGridCells song
         }
 
 
-chordsGridCells : M.Sequence -> List (E.OnGrid (E.Element S.Styles variation msg))
-chordsGridCells sequence =
+chordsGridCells : M.Sequence a -> List (E.OnGrid (E.Element S.Styles variation msg))
+chordsGridCells { playedChords, currChord, nextChords } =
     let
-        prevChords =
-            List.indexedMap (mapChords S.Inactive 0) sequence.prev
+        played =
+            List.indexedMap (mapChords S.Inactive 0) playedChords
 
-        ( nextChordStart, currChord ) =
-            case sequence.curr of
+        ( nextStart, curr ) =
+            case currChord of
                 Nothing ->
-                    ( List.length sequence.prev
+                    ( List.length playedChords
                     , []
                     )
 
                 Just chord ->
-                    ( List.length sequence.prev + 1
-                    , List.indexedMap (mapChords S.Active <| List.length sequence.prev) <| chord :: []
+                    ( List.length playedChords + 1
+                    , List.indexedMap (mapChords S.Active <| List.length playedChords) <| chord :: []
                     )
 
-        nextChords =
-            List.indexedMap (mapChords S.Inactive nextChordStart) sequence.next
+        next =
+            List.indexedMap (mapChords S.Inactive nextStart) nextChords
     in
-    prevChords ++ currChord ++ nextChords
+    played ++ curr ++ next
 
 
 mapChords : S.ActiveInactive -> Int -> Int -> M.ChordTime -> E.OnGrid (E.Element S.Styles variation msg)
-mapChords activeInactive start idx chordTime =
+mapChords activeInactive start idx ( chord, time ) =
     E.cell
         { start = ( (start + idx) % 8, (start + idx) // 8 )
         , width = 1
@@ -174,7 +174,7 @@ mapChords activeInactive start idx chordTime =
                 [ A.paddingXY 0 10
                 , A.inlineStyle [ ( "text-align", "center" ) ]
                 ]
-                (E.text <| chordName chordTime.chord)
+                (E.text <| chordName chord)
         }
 
 
