@@ -87,7 +87,7 @@ displaySong song =
 
 ytImgUrl : String -> String
 ytImgUrl id =
-    "https://i.ytimg.com/vi/" ++ id ++ "/hqdefault.jpg"
+    "https://i.ytimg.com/vi/" ++ id ++ "/default.jpg"
 
 
 playSong : M.CurrentSong a -> E.Element S.Styles variation M.Msg

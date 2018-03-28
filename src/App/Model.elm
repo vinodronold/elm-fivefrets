@@ -126,21 +126,41 @@ update msg model =
             { model | test = err } ! []
 
         Tick _ ->
-            let
-                currSong =
-                    case model.playerStatus of
-                        Playing ->
-                            case model.currSong of
-                                Nothing ->
-                                    Nothing
+            { model
+                | playerStatus = getCurrPlayerStatus model
+                , currSong = getCurrSong model
+            }
+                ! []
 
-                                Just song ->
-                                    Just <| nextChordSequence song
 
-                        _ ->
-                            model.currSong
-            in
-            { model | currSong = currSong } ! []
+getCurrPlayerStatus : CurrentSong a -> PlayerStatus
+getCurrPlayerStatus { playerStatus, currSong } =
+    case currSong of
+        Nothing ->
+            NotStarted
+
+        Just song ->
+            case song.nextChords of
+                [] ->
+                    Stopped
+
+                _ ->
+                    playerStatus
+
+
+getCurrSong : CurrentSong a -> Maybe Song
+getCurrSong { currSong, playerStatus } =
+    case playerStatus of
+        Playing ->
+            case currSong of
+                Nothing ->
+                    Nothing
+
+                Just song ->
+                    Just <| nextChordSequence song
+
+        _ ->
+            currSong
 
 
 nextChordSequence : Sequence a -> Sequence a
@@ -203,7 +223,7 @@ subTimer model =
 
 sampleSong : Song
 sampleSong =
-    Song "Title 1" "1" [] Nothing nextChords
+    Song "PiL5UTTTrxk" "Thalli Pogathey - Video Song | Achcham Yenbadhu Madamaiyada | A R Rahman | STR | Gautham" [] Nothing nextChords
 
 
 nextChords : List ChordTime
