@@ -1,10 +1,10 @@
 module App.Utils exposing (button, disabledButton)
 
 import App.Model as M
-import App.Styles as S
 import Element as E
 import Element.Attributes as A
 import Element.Events as E
+import View.Styles as S
 
 
 --- VIEW UTLIS FN ---

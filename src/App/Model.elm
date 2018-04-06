@@ -11,16 +11,16 @@ type Page
 
 type alias Model =
     { currPage : Page
-    , currSong : Maybe Song
+    , player : Maybe Song
     , playerStatus : PlayerStatus
-    , songs : List Song
+    , songs : List SongID
     , test : String
     }
 
 
-type alias CurrentSong a =
+type alias Player a =
     { a
-        | currSong : Maybe Song
+        | player : Maybe Song
         , playerStatus : PlayerStatus
     }
 
@@ -33,11 +33,17 @@ type PlayerStatus
 
 
 type alias Song =
-    { id : String
-    , title : String
+    { id : SongID
     , playedChords : List ChordTime
     , currChord : Maybe ChordTime
     , nextChords : List ChordTime
+    }
+
+
+type alias SongID =
+    { id : String
+    , title : String
+    , imgUrl : String
     }
 
 

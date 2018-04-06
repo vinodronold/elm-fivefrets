@@ -1,12 +1,12 @@
 module App.View exposing (view)
 
 import App.Model as M
-import App.Styles as S
 import App.Utils as U
 import Element as E
 import Element.Attributes as A
 import Element.Events as Event
 import Html exposing (Html)
+import View.Styles as S
 
 
 view : M.Model -> Html M.Msg
