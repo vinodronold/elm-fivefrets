@@ -14,6 +14,7 @@ type Styles
     | App
     | Logo
     | NavItem
+    | Error
     | Button ActiveInactive
     | TopBar
     | SongItem
@@ -34,7 +35,7 @@ stylesheet =
     S.styleSheet
         [ S.style None []
         , S.style App
-            [ Font.typeface <| Font.importUrl { url = "https://fonts.googleapis.com/css?family=Roboto", name = "Roboto" } :: []
+            [ Font.typeface <| Font.importUrl { url = "https://fonts.googleapis.com/css?family=Roboto:300,400", name = "Roboto" } :: []
             , Color.background appColor.background
             , Color.text appColor.primary
             , Font.size 16
@@ -45,6 +46,7 @@ stylesheet =
             , Font.letterSpacing 5
             , S.prop "font-variant-ligatures" "none"
             , Font.size 32
+            , Font.weight 300
             ]
         , S.style NavItem
             [ Border.bottom 3
@@ -58,6 +60,11 @@ stylesheet =
                   , props = [ "background" ]
                   }
                 ]
+            ]
+        , S.style Error
+            [ Color.text appColor.error
+            , Font.size 48
+            , Font.weight 300
             ]
         , S.style (Button Active)
             [ Color.border appColor.primary
@@ -116,6 +123,7 @@ type alias AppColorPalette =
     , textOnPrimary : Color.Color
     , secondary : Color.Color
     , background : Color.Color
+    , error : Color.Color
     }
 
 
@@ -131,6 +139,7 @@ appColor =
     , textOnPrimary = rgba 255 255 255 0.87
     , secondary = rgba 255 212 84 1
     , background = rgba 255 255 255 1
+    , error = rgba 213 0 0 0.87
     }
 
 
