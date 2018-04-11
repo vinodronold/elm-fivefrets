@@ -1,0 +1,25 @@
+{
+  "name": "elm-fivefrets",
+  "version": "1.0.0",
+  "description": "Webapp for fivefrets.com",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vinodronold/elm-fivefrets.git"
+  },
+  "author": "Vinod Ronold",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/vinodronold/elm-fivefrets/issues"
+  },
+  "homepage": "https://github.com/vinodronold/elm-fivefrets#readme",
+  "dependencies": {
+    "youtube-player": "^5.5.0"
+  }
+}

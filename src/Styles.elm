@@ -19,6 +19,7 @@ type Styles
     | TopBar
     | SongItem
     | ChordItem ActiveInactive
+    | YouTubeSpace
 
 
 type ActiveInactive
@@ -114,6 +115,7 @@ stylesheet =
             [ Color.background appColor.secondary
             , Shadow.simple
             ]
+        , S.style YouTubeSpace []
         ]
 
 

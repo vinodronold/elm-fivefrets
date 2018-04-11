@@ -15,12 +15,17 @@ songs model =
 
 displaySong : Data.SongID -> E.Element S.Styles variation msg
 displaySong song =
-    E.link (Route.href <| Route.Player song.id) <|
+    E.link (Route.href <| Route.Player song.ytid) <|
         E.row S.SongItem
             [ A.spacing 20 ]
-            [ E.image S.None [] { src = song.imgUrl, caption = song.title }
+            [ displaySongImg song
             , E.column S.None
                 [ A.spacing 5, A.verticalCenter ]
                 [ E.el S.None [] <| E.text song.title
                 ]
             ]
+
+
+displaySongImg : Data.SongID -> E.Element S.Styles variation msg
+displaySongImg song =
+    E.image S.None [] { src = song.imgUrl, caption = song.title }

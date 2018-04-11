@@ -1,12 +1,14 @@
-module Page.Player exposing (Model, Msg(..), PlayerStatus(..), load, view)
+module Page.Player exposing (Model, Msg(..), PlayerStatus(..), load, update, view)
 
 import Data.ChordTime as ChordTime exposing (ChordTime)
-import Data.Song exposing (SongID, YouTubeID)
+import Data.Song as Song exposing (SongID, YouTubeID)
 import Element as E
 import Element.Attributes as A
 import Page.Errored as Errored
 import Styles as S
 import Task exposing (Task)
+import Time exposing (Time)
+import View.Songs as ViewSong
 import View.Utils as Utils
 
 
@@ -36,7 +38,7 @@ load youTubeID =
     --         PageLoadError "Chords Player is currently unavailable."
     -- in
     Task.succeed <|
-        Model { id = youTubeID, title = "PLAYER SONG", imgUrl = "" }
+        Model { ytid = youTubeID, title = "PLAYER SONG", imgUrl = "https://i.ytimg.com/vi/NCtzkaL2t_Y/mqdefault.jpg" }
             NotStarted
             []
             Nothing
@@ -45,11 +47,27 @@ load youTubeID =
 
 type Msg
     = ChangePlayerStatus PlayerStatus
+    | Tick Time
+
+
+update : Msg -> Model -> Model
+update msg model =
+    case msg of
+        Tick _ ->
+            { model | playerStatus = Playing }
+
+        ChangePlayerStatus playerStatus ->
+            { model | playerStatus = playerStatus }
 
 
 view : Model -> E.Element S.Styles variation Msg
 view model =
-    E.column S.None [] [ displayChords model, displayControl model.playerStatus ]
+    E.column S.None
+        []
+        [ displayChords model
+        , displayControl model.playerStatus
+        , diplayYouTubeVideo model.id
+        ]
 
 
 displayControl : PlayerStatus -> E.Element S.Styles variation Msg
@@ -128,3 +146,10 @@ mapChords activeInactive start idx ( chord, time ) =
                 ]
                 (E.text <| ChordTime.chordName chord)
         }
+
+
+diplayYouTubeVideo : SongID -> E.Element S.Styles variation msg
+diplayYouTubeVideo song =
+    E.screen <|
+        E.el S.YouTubeSpace [ A.id "YT_Player", A.alignBottom, A.padding 10 ] <|
+            ViewSong.displaySongImg song

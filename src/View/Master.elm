@@ -3,6 +3,7 @@ module View.Master exposing (frame)
 import Element as E
 import Element.Attributes as A
 import Html exposing (Html)
+import Route
 import Styles as S
 
 
@@ -31,9 +32,10 @@ appNav =
             [ E.el S.Logo [ A.padding 50 ] <| E.text "fivefrets"
             , E.column S.None
                 []
-                [ E.link "/" <| E.el S.NavItem [ A.padding 10 ] <| E.text "Home"
-                , E.link "/profile" <| E.el S.NavItem [ A.padding 10 ] <| E.text "Profile"
-                , E.link "/logout" <| E.el S.NavItem [ A.padding 10 ] <| E.text "Logout"
+                [ E.link (Route.href Route.Home) <| E.el S.NavItem [ A.padding 10 ] <| E.text "Home"
+
+                -- , E.link "/profile" <| E.el S.NavItem [ A.padding 10 ] <| E.text "Profile"
+                -- , E.link "/logout" <| E.el S.NavItem [ A.padding 10 ] <| E.text "Logout"
                 ]
             ]
         , name = "fivefrets"

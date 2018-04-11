@@ -28,7 +28,7 @@ type alias Songs =
 
 
 type alias SongID =
-    { id : YouTubeID
+    { ytid : YouTubeID
     , title : String
     , imgUrl : String
     }

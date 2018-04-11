@@ -1,21 +1,23 @@
 import { Main } from './Main.elm'
 // import InitJS from './App/JS'
+import { loadPlayer } from './JS/YTPlayer'
 import registerServiceWorker from './registerServiceWorker'
 
 var app = Main.embed(document.getElementById('root'))
 
-// app.ports.dataToJS.subscribe(msg => {
-//   switch (msg.tag) {
-//     case 'TestDataToJS':
-//       console.log('TestDataToJS')
-//       break
+app.ports.elmData.subscribe(msg => {
+  switch (msg.tag) {
+    case 'LoadYouTubeVideo':
+      console.log('LoadYouTubeVideo', msg.data)
+      // loadPlayer(msg.data)
+      break
 
-//     default:
-//       break
-//   }
-// })
+    default:
+      break
+  }
+})
 
-// app.ports.dataFromJS.send({ tag: 'TestFromJS', data: null })
+app.ports.jsData.send({ tag: 'JSPlayerStatus', data: null })
 
 // InitJS()
 
