@@ -30,6 +30,7 @@ appNav =
         []
         { options =
             [ E.el S.Logo [ A.padding 50 ] <| E.text "fivefrets"
+            , E.el S.Version [ A.padding 5 ] <| E.el S.None [ A.center ] <| E.text "v 0.0"
             , E.column S.None
                 []
                 [ E.link (Route.href Route.Home) <| E.el S.NavItem [ A.padding 10 ] <| E.text "Home"

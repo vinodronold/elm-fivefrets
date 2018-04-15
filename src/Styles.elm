@@ -13,6 +13,7 @@ type Styles
     = None
     | App
     | Logo
+    | Version
     | NavItem
     | Error
     | Button ActiveInactive
@@ -48,6 +49,11 @@ stylesheet =
             , S.prop "font-variant-ligatures" "none"
             , Font.size 32
             , Font.weight 300
+            ]
+        , S.style Version
+            [ Color.background appColor.primary
+            , Color.text appColor.textOnPrimary
+            , Font.size 10
             ]
         , S.style NavItem
             [ Border.bottom 3
