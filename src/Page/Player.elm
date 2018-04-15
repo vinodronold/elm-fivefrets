@@ -1,10 +1,12 @@
-module Page.Player exposing (Model, Msg(..), PlayerStatus(..), load, update, view)
+module Page.Player exposing (Model, Msg(..), load, update, view)
 
 import Data.ChordTime as ChordTime exposing (ChordTime)
+import Data.Player as Player exposing (PlayerStatus, YTPlayerID)
 import Data.Song as Song exposing (SongID, YouTubeID)
 import Element as E
 import Element.Attributes as A
 import Page.Errored as Errored
+import Ports
 import Styles as S
 import Task exposing (Task)
 import Time exposing (Time)
@@ -14,18 +16,12 @@ import View.Utils as Utils
 
 type alias Model =
     { id : SongID
+    , playerID : YTPlayerID
     , playerStatus : PlayerStatus
     , playedChords : List ChordTime
     , currChord : Maybe ChordTime
     , nextChords : List ChordTime
     }
-
-
-type PlayerStatus
-    = NotStarted
-    | Playing
-    | Paused
-    | Stopped
 
 
 load : YouTubeID -> Task Errored.PageLoadError Model
@@ -39,25 +35,34 @@ load youTubeID =
     -- in
     Task.succeed <|
         Model { ytid = youTubeID, title = "PLAYER SONG", imgUrl = "https://i.ytimg.com/vi/NCtzkaL2t_Y/mqdefault.jpg" }
-            NotStarted
+            (Player.YTPlayerID "YT_Player")
+            Player.NotLoaded
             []
             Nothing
             ChordTime.sample
 
 
 type Msg
-    = ChangePlayerStatus PlayerStatus
+    = Load YTPlayerID YouTubeID
+    | ChangePlayerStatus PlayerStatus
+    | UpdatePlayerStatus PlayerStatus
     | Tick Time
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Tick _ ->
-            { model | playerStatus = Playing }
+            { model | playerStatus = Player.Playing } ! []
+
+        Load playerID youTubeID ->
+            model ! [ Ports.pushDataToJS <| Ports.LoadYouTubeVideo playerID youTubeID ]
 
         ChangePlayerStatus playerStatus ->
-            { model | playerStatus = playerStatus }
+            model ! [ Ports.pushDataToJS <| Ports.SetPlayerState playerStatus ]
+
+        UpdatePlayerStatus playerStatus ->
+            { model | playerStatus = playerStatus } ! []
 
 
 view : Model -> E.Element S.Styles variation Msg
@@ -65,38 +70,59 @@ view model =
     E.column S.None
         []
         [ displayChords model
-        , displayControl model.playerStatus
-        , diplayYouTubeVideo model.id
+        , displayControl model
+        , diplayYouTubeVideo model
         ]
 
 
-displayControl : PlayerStatus -> E.Element S.Styles variation Msg
-displayControl playerStatus =
-    E.row S.None [ A.spacing 10, A.padding 20, A.center ] <| controlButtons playerStatus
+displayControl : Model -> E.Element S.Styles variation Msg
+displayControl model =
+    E.row S.None [ A.spacing 10, A.padding 20, A.center ] <| controlButtons model
 
 
-controlButtons : PlayerStatus -> List (E.Element S.Styles variation Msg)
-controlButtons playerStatus =
+controlButtons : Model -> List (E.Element S.Styles variation Msg)
+controlButtons { id, playerID, playerStatus } =
     case playerStatus of
-        NotStarted ->
-            [ Utils.button "Play" (ChangePlayerStatus Playing)
+        Player.NotLoaded ->
+            [ Utils.button "Play" (Load playerID id.ytid)
             , Utils.disabledButton "Stop"
             ]
 
-        Playing ->
-            [ Utils.button "Pause" (ChangePlayerStatus Paused)
-            , Utils.button "Stop" (ChangePlayerStatus Stopped)
-            ]
+        Player.Playing ->
+            [ pauseButton, stopButton ]
 
-        Paused ->
-            [ Utils.button "Play" (ChangePlayerStatus Playing)
-            , Utils.button "Stop" (ChangePlayerStatus Stopped)
-            ]
+        Player.Paused ->
+            [ playButton, stopButton ]
 
-        Stopped ->
-            [ Utils.button "Play" (ChangePlayerStatus Playing)
+        Player.Ended ->
+            [ playButton
             , Utils.disabledButton "Stop"
             ]
+
+        Player.Cued ->
+            [ playButton
+            , Utils.disabledButton "Stop"
+            ]
+
+        _ ->
+            [ Utils.disabledButton "Play"
+            , Utils.disabledButton "Stop"
+            ]
+
+
+playButton : E.Element S.Styles variation Msg
+playButton =
+    Utils.button "Play" (ChangePlayerStatus Player.Playing)
+
+
+pauseButton : E.Element S.Styles variation Msg
+pauseButton =
+    Utils.button "Pause" (ChangePlayerStatus Player.Paused)
+
+
+stopButton : E.Element S.Styles variation Msg
+stopButton =
+    Utils.button "Stop" (ChangePlayerStatus Player.Ended)
 
 
 displayChords : Model -> E.Element S.Styles variation msg
@@ -148,8 +174,25 @@ mapChords activeInactive start idx ( chord, time ) =
         }
 
 
-diplayYouTubeVideo : SongID -> E.Element S.Styles variation msg
-diplayYouTubeVideo song =
+diplayYouTubeVideo : Model -> E.Element S.Styles variation msg
+diplayYouTubeVideo { id, playerID } =
+    let
+        pad =
+            10
+
+        ht =
+            180
+
+        wd =
+            320
+    in
     E.screen <|
-        E.el S.YouTubeSpace [ A.id "YT_Player", A.alignBottom, A.padding 10 ] <|
-            ViewSong.displaySongImg song
+        E.el S.YouTubeSpace
+            [ A.id <| Player.ytPlayerIDToString playerID
+            , A.alignBottom
+            , A.padding pad
+            , A.height <| A.px <| ht + pad * 2
+            , A.width <| A.px <| wd + pad * 2
+            ]
+        <|
+            ViewSong.displaySongImg id

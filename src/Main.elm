@@ -1,5 +1,6 @@
 port module Main exposing (..)
 
+import Data.Player as PlayerData
 import Element as E
 import Html exposing (Html)
 import Navigation exposing (Location)
@@ -56,7 +57,6 @@ type Msg
     | HomeLoaded (Result Errored.PageLoadError Home.Model)
     | PlayerLoaded (Result Errored.PageLoadError Player.Model)
     | PlayerMsg Player.Msg
-    | ChangePlayerStatus Player.PlayerStatus
     | PortMsg Ports.JSDataIn
     | PortErr String
 
@@ -72,9 +72,6 @@ updatePage page msg model =
         ( SetRoute route, _ ) ->
             setRoute route model
 
-        ( PortMsg elmData, _ ) ->
-            model ! []
-
         ( PortErr err, _ ) ->
             model ! []
 
@@ -85,14 +82,28 @@ updatePage page msg model =
             { model | pageState = Loaded (Errored errMessage) } ! []
 
         ( PlayerLoaded (Ok playerModel), _ ) ->
-            { model | pageState = Loaded (Player playerModel) }
-                ! [ Ports.pushDataToJS <| Ports.LoadYouTubeVideo playerModel.id.ytid ]
+            { model | pageState = Loaded (Player playerModel) } ! []
 
         ( PlayerLoaded (Err errMessage), _ ) ->
             { model | pageState = Loaded (Errored errMessage) } ! []
 
+        ( PortMsg jsDataIn, Player playerModel ) ->
+            case jsDataIn of
+                Ports.JSPlayerStatus jsPlayerStatus ->
+                    let
+                        ( subModel, subCmd ) =
+                            Player.update
+                                (Player.UpdatePlayerStatus <| PlayerData.jsToElmPlayerStatus jsPlayerStatus)
+                                playerModel
+                    in
+                    { model | pageState = Loaded (Player subModel) } ! [ Cmd.map PlayerMsg subCmd ]
+
         ( PlayerMsg playerMsg, Player playerModel ) ->
-            { model | pageState = Loaded (Player (Player.update playerMsg playerModel)) } ! []
+            let
+                ( subModel, subCmd ) =
+                    Player.update playerMsg playerModel
+            in
+            { model | pageState = Loaded (Player subModel) } ! [ Cmd.map PlayerMsg subCmd ]
 
         ( _, NotFound ) ->
             -- Disregard incoming messages when we're on the
@@ -120,7 +131,7 @@ pageSubscriptions : Page -> Sub Msg
 pageSubscriptions page =
     case page of
         Player playerModel ->
-            if playerModel.playerStatus == Player.Playing then
+            if playerModel.playerStatus == PlayerData.Playing then
                 Sub.map PlayerMsg <| Time.every Time.second Player.Tick
             else
                 Sub.none

@@ -28,4 +28,4 @@ displaySong song =
 
 displaySongImg : Data.SongID -> E.Element S.Styles variation msg
 displaySongImg song =
-    E.image S.None [] { src = song.imgUrl, caption = song.title }
+    E.image S.None [ A.spread ] { src = song.imgUrl, caption = song.title }

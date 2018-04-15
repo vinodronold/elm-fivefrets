@@ -1,24 +1,51 @@
 import { Main } from './Main.elm'
-// import InitJS from './App/JS'
-import { loadPlayer } from './JS/YTPlayer'
+import YouTubePlayer from 'youtube-player'
 import registerServiceWorker from './registerServiceWorker'
 
+var jsPlayer, jsPlayerListerner
 var app = Main.embed(document.getElementById('root'))
 
-app.ports.elmData.subscribe(msg => {
-  switch (msg.tag) {
+app.ports.elmData.subscribe(({ tag, data }) => {
+  switch (tag) {
     case 'LoadYouTubeVideo':
-      console.log('LoadYouTubeVideo', msg.data)
-      // loadPlayer(msg.data)
+      console.log('LoadYouTubeVideo', data)
+      jsPlayer = YouTubePlayer(data.playerID, {
+        videoId: data.youTubeID,
+        height: 'auto',
+        width: 'auto',
+        playerVars: {
+          autoplay: 1,
+          controls: 0,
+          fs: 0,
+          iv_load_policy: 3,
+          modestbranding: 1,
+          playsinline: 1,
+          rel: 0,
+          showinfo: 0
+        }
+      })
+
+      jsPlayerListerner = jsPlayer.on('stateChange', e => {
+        console.log('State: ' + ' (' + e.data + ').')
+        app.ports.jsData.send({ tag: 'JSPlayerStatus', data: e.data })
+      })
+      break
+
+    case 'PlayVideo':
+      jsPlayer.playVideo()
+      break
+
+    case 'PauseVideo':
+      jsPlayer.pauseVideo()
+      break
+
+    case 'StopVideo':
+      jsPlayer.stopVideo()
       break
 
     default:
       break
   }
 })
-
-app.ports.jsData.send({ tag: 'JSPlayerStatus', data: null })
-
-// InitJS()
 
 registerServiceWorker()
