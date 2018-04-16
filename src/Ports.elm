@@ -4,6 +4,7 @@ import Data.Player as Player
 import Data.Song as Song
 import Json.Decode as Decode
 import Json.Encode as Encode
+import Time exposing (Time)
 
 
 pushDataToJS : ElmDataOut -> Cmd msg
@@ -33,6 +34,9 @@ pushDataToJS data =
                 _ ->
                     elmData { tag = "SetPlayerState_NoOp", data = Encode.null }
 
+        GetPlayerCurrTime ->
+            elmData { tag = "GetPlayerCurrTime", data = Encode.null }
+
 
 pullJSDataToElm : (JSDataIn -> msg) -> (String -> msg) -> Sub msg
 pullJSDataToElm tagger onError =
@@ -50,6 +54,14 @@ parseJSData tagger onError js =
                 Err e ->
                     onError e
 
+        "JSPlayerCurrTime" ->
+            case Decode.decodeValue Decode.float js.data of
+                Ok currTime ->
+                    tagger <| JSPlayerCurrTime currTime
+
+                Err e ->
+                    onError e
+
         _ ->
             onError <| "Unexpected info from outside: " ++ toString jsData
 
@@ -62,11 +74,13 @@ type alias PortData =
 
 type JSDataIn
     = JSPlayerStatus Int
+    | JSPlayerCurrTime Time
 
 
 type ElmDataOut
     = LoadYouTubeVideo Player.YTPlayerID Song.YouTubeID
     | SetPlayerState Player.PlayerStatus
+    | GetPlayerCurrTime
 
 
 port elmData : PortData -> Cmd msg

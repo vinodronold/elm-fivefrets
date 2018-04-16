@@ -104,6 +104,15 @@ updatePage page msg model =
                     in
                     { model | pageState = Loaded (Player subModel) } ! [ Cmd.map PlayerMsg subCmd ]
 
+                Ports.JSPlayerCurrTime currTime ->
+                    let
+                        ( subModel, subCmd ) =
+                            Player.update
+                                (Player.UpdateCurrentTime currTime)
+                                playerModel
+                    in
+                    { model | pageState = Loaded (Player subModel) } ! [ Cmd.map PlayerMsg subCmd ]
+
         ( PlayerMsg playerMsg, Player playerModel ) ->
             let
                 ( subModel, subCmd ) =

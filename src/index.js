@@ -43,6 +43,13 @@ app.ports.elmData.subscribe(({ tag, data }) => {
       jsPlayer.stopVideo()
       break
 
+    case 'GetPlayerCurrTime':
+      jsPlayer.getCurrentTime().then(currTime => {
+        console.log(currTime)
+        app.ports.jsData.send({ tag: 'JSPlayerCurrTime', data: currTime })
+      })
+      break
+
     default:
       break
   }

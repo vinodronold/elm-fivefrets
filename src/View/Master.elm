@@ -39,7 +39,8 @@ menuToggleAttr navOpen =
     if navOpen then
         [ A.width <| A.fill ]
     else
-        [ A.width <| A.px 0, A.hidden ]
+        [ A.hidden
+        ]
 
 
 appNav : Bool -> E.Element S.Styles variation msg

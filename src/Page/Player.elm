@@ -18,6 +18,7 @@ type alias Model =
     { id : SongID
     , playerID : YTPlayerID
     , playerStatus : PlayerStatus
+    , currTime : Maybe Time
     , playedChords : List ChordTime
     , currChord : Maybe ChordTime
     , nextChords : List ChordTime
@@ -37,6 +38,7 @@ load youTubeID =
         Model { ytid = youTubeID, title = "PLAYER SONG", imgUrl = "https://i.ytimg.com/vi/NCtzkaL2t_Y/mqdefault.jpg" }
             (Player.YTPlayerID "YT_Player")
             Player.NotLoaded
+            Nothing
             []
             Nothing
             ChordTime.sample
@@ -46,6 +48,7 @@ type Msg
     = Load YTPlayerID YouTubeID
     | ChangePlayerStatus PlayerStatus
     | UpdatePlayerStatus PlayerStatus
+    | UpdateCurrentTime Time
     | Tick Time
 
 
@@ -53,7 +56,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Tick _ ->
-            { model | playerStatus = Player.Playing } ! []
+            model ! [ Ports.pushDataToJS Ports.GetPlayerCurrTime ]
 
         Load playerID youTubeID ->
             model ! [ Ports.pushDataToJS <| Ports.LoadYouTubeVideo playerID youTubeID ]
@@ -63,6 +66,9 @@ update msg model =
 
         UpdatePlayerStatus playerStatus ->
             { model | playerStatus = playerStatus } ! []
+
+        UpdateCurrentTime currTime ->
+            { model | currTime = Just currTime } ! []
 
 
 view : Model -> E.Element S.Styles variation Msg
