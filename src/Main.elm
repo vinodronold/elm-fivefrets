@@ -33,7 +33,8 @@ type PageState
 
 
 type alias Model =
-    { pageState : PageState
+    { navOpen : Bool
+    , pageState : PageState
     }
 
 
@@ -44,7 +45,8 @@ type alias Model =
 init : Location -> ( Model, Cmd Msg )
 init location =
     setRoute (Route.fromLocation location)
-        { pageState = Loading
+        { navOpen = False
+        , pageState = Loading
         }
 
 
@@ -54,6 +56,7 @@ init location =
 
 type Msg
     = SetRoute (Maybe Route)
+    | ToggleMenu
     | HomeLoaded (Result Errored.PageLoadError Home.Model)
     | PlayerLoaded (Result Errored.PageLoadError Player.Model)
     | PlayerMsg Player.Msg
@@ -71,6 +74,9 @@ updatePage page msg model =
     case ( msg, page ) of
         ( SetRoute route, _ ) ->
             setRoute route model
+
+        ( ToggleMenu, _ ) ->
+            { model | navOpen = not model.navOpen } ! []
 
         ( PortErr err, _ ) ->
             model ! []
@@ -156,24 +162,29 @@ getPage pageState =
 
 view : Model -> Html Msg
 view model =
+    let
+        masterFrame isLoading =
+            Master.frame
+                { navOpen = model.navOpen, isLoading = isLoading, menuMsg = ToggleMenu }
+    in
     case model.pageState of
         Loading ->
-            Master.frame True <| E.el S.None [] (E.text "*** Loading ***")
+            masterFrame True <| E.el S.None [] (E.text "*** Loading ***")
 
         Loaded NotFound ->
-            Master.frame False <| E.el S.None [] (E.text "*** NotFound ***")
+            masterFrame False <| E.el S.None [] (E.text "*** NotFound ***")
 
         Loaded Blank ->
-            Master.frame False <| E.el S.None [] (E.text "*** Blank ***")
+            masterFrame False <| E.el S.None [] (E.text "*** Blank ***")
 
         Loaded (Errored err) ->
-            Master.frame False <| Errored.view err
+            masterFrame False <| Errored.view err
 
         Loaded (Home homeModel) ->
-            Master.frame False <| Home.view homeModel
+            masterFrame False <| Home.view homeModel
 
         Loaded (Player playerModel) ->
-            Master.frame False <| E.map PlayerMsg (Player.view playerModel)
+            masterFrame False <| E.map PlayerMsg (Player.view playerModel)
 
 
 setRoute : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -186,10 +197,10 @@ setRoute maybeRoute model =
             model ! [ Route.modifyUrl Route.Home ]
 
         Just Route.Home ->
-            { model | pageState = Loading } ! [ Task.attempt HomeLoaded Home.load ]
+            { model | navOpen = False, pageState = Loading } ! [ Task.attempt HomeLoaded Home.load ]
 
         Just (Route.Player youTubeID) ->
-            { model | pageState = Loading } ! [ Task.attempt PlayerLoaded <| Player.load youTubeID ]
+            { model | navOpen = False, pageState = Loading } ! [ Task.attempt PlayerLoaded <| Player.load youTubeID ]
 
 
 
