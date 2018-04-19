@@ -20,7 +20,9 @@ type Styles
     | Button ActiveInactive
     | IconButton
     | TopBar
+    | Title
     | SongItem
+    | ChordGridContainer
     | ChordItem ActiveInactive
     | YouTubeSpace
 
@@ -118,6 +120,7 @@ stylesheet =
             , Color.text appColors.textOnPrimary
             , Font.lineHeight 2
             ]
+        , S.style Title []
         , S.style SongItem
             [ Color.background appColors.lightPrimary
             , Shadow.deep
@@ -131,9 +134,12 @@ stylesheet =
                   }
                 ]
             ]
+        , S.style ChordGridContainer
+            []
         , S.style (ChordItem Inactive)
             [ Color.background appColors.lightPrimary
             , Shadow.deep
+            , S.cursor "pointer"
             ]
         , S.style (ChordItem Active)
             [ Color.background appColors.secondary

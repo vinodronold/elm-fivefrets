@@ -108,7 +108,7 @@ updatePage page msg model =
                     let
                         ( subModel, subCmd ) =
                             Player.update
-                                (Player.UpdateCurrentTime currTime)
+                                (Player.UpdatePlayerTime currTime)
                                 playerModel
                     in
                     { model | pageState = Loaded (Player subModel) } ! [ Cmd.map PlayerMsg subCmd ]
@@ -147,7 +147,7 @@ pageSubscriptions page =
     case page of
         Player playerModel ->
             if playerModel.playerStatus == PlayerData.Playing then
-                Sub.map PlayerMsg <| Time.every Time.second Player.Tick
+                Sub.map PlayerMsg <| Time.every (Time.second * 0.1) Player.Tick
             else
                 Sub.none
 

@@ -1,10 +1,23 @@
-module Data.ChordTime exposing (ChordTime, chordName, sample)
+module Data.ChordTime exposing (ChordTime, chordName, getTime, sample)
+
+import Time exposing (Time)
+
 
 -----------------------------------------------------------------------
 
 
 type alias ChordTime =
-    ( Chord, Float )
+    ( Chord, Time )
+
+
+getTime : Maybe ChordTime -> Time
+getTime chordTime =
+    case chordTime of
+        Nothing ->
+            0
+
+        Just ( _, t ) ->
+            t
 
 
 
@@ -144,4 +157,24 @@ sample =
     , ( ( E, Major ), 18.0 )
     , ( ( F, Minor ), 19.0 )
     , ( ( G, Major ), 20.0 )
+    , ( ( A, Minor ), 21.0 )
+    , ( ( B, Major ), 22.0 )
+    , ( ( B, Major ), 23.0 )
+    , ( ( D, Minor ), 24.0 )
+    , ( ( E, Major ), 25.0 )
+    , ( ( F, Major ), 26.0 )
+    , ( ( G, Major ), 27.0 )
+    , ( ( A, Major ), 28.0 )
+    , ( ( B, Major ), 29.0 )
+    , ( ( C, Major ), 30.0 )
+    , ( ( Cs, Minor ), 31.0 )
+    , ( ( Ds, Major ), 32.0 )
+    , ( ( Fs, Major ), 33.0 )
+    , ( ( Bf, Minor ), 34.0 )
+    , ( ( B, Major ), 35.0 )
+    , ( ( C, Major ), 36.0 )
+    , ( ( D, Major ), 37.0 )
+    , ( ( E, Major ), 38.0 )
+    , ( ( F, Minor ), 39.0 )
+    , ( ( G, Major ), 40.0 )
     ]

@@ -50,6 +50,13 @@ app.ports.elmData.subscribe(({ tag, data }) => {
       })
       break
 
+    case 'SeekTo':
+      console.log('SeekTo -> ', data)
+      if (jsPlayer) {
+        jsPlayer.seekTo(data, true)
+      }
+      break
+
     default:
       break
   }

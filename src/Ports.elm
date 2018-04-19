@@ -37,6 +37,9 @@ pushDataToJS data =
         GetPlayerCurrTime ->
             elmData { tag = "GetPlayerCurrTime", data = Encode.null }
 
+        SeekTo time ->
+            elmData { tag = "SeekTo", data = Encode.float time }
+
 
 pullJSDataToElm : (JSDataIn -> msg) -> (String -> msg) -> Sub msg
 pullJSDataToElm tagger onError =
@@ -81,6 +84,7 @@ type ElmDataOut
     = LoadYouTubeVideo Player.YTPlayerID Song.YouTubeID
     | SetPlayerState Player.PlayerStatus
     | GetPlayerCurrTime
+    | SeekTo Time
 
 
 port elmData : PortData -> Cmd msg
