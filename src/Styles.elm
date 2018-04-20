@@ -120,7 +120,10 @@ stylesheet =
             , Color.text appColors.textOnPrimary
             , Font.lineHeight 2
             ]
-        , S.style Title []
+        , S.style Title
+            [ Font.size 32
+            , Color.text appColors.primary
+            ]
         , S.style SongItem
             [ Color.background appColors.lightPrimary
             , Shadow.deep

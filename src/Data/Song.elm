@@ -4,6 +4,8 @@ module Data.Song
         , SongID
         , Songs
         , YouTubeID
+        , decodeYTItem
+        , decodeYouTubeID
         , songsFeed
         , youTubeIDParser
         , youTubeIDtoString

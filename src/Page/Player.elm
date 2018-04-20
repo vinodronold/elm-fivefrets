@@ -8,6 +8,7 @@ import Dom.Scroll as Scroll
 import Element as E
 import Element.Attributes as A
 import Element.Events as Events
+import Http
 import Maybe
 import Page.Errored as Errored
 import Ports
@@ -19,45 +20,50 @@ import View.Utils as Utils
 
 
 type alias Model =
-    { id : SongID
-    , playerID : YTPlayerID
+    { playerID : YTPlayerID
     , playerStatus : PlayerStatus
     , playerTime : Maybe Time
-    , scrollPos : Float
     , playedChords : List ChordTime
     , currChord : Maybe ChordTime
     , nextChords : List ChordTime
+    , id : SongID
     }
 
 
 load : YouTubeID -> Task Errored.PageLoadError Model
 load youTubeID =
-    -- let
-    --     loadPlayer =
-    --         playerData
-    --             |> Http.toTask
-    --     handleLoadError _ =
-    --         PageLoadError "Chords Player is currently unavailable."
-    -- in
-    Task.succeed <|
-        Model { ytid = youTubeID, title = "PLAYER SONG", imgUrl = "https://i.ytimg.com/vi/NCtzkaL2t_Y/mqdefault.jpg" }
-            (Player.YTPlayerID "YT_Player")
-            Player.NotLoaded
-            Nothing
-            0
-            []
-            Nothing
-            ChordTime.sample
+    let
+        initModel =
+            Model (Player.YTPlayerID "YT_Player")
+                Player.NotLoaded
+                Nothing
+                []
+                Nothing
+                ChordTime.sample
+
+        getSongID =
+            youTubeID
+                |> Player.videoDetails
+                |> Http.toTask
+
+        handleLoadError e =
+            Errored.pageLoadError "Chords Player is currently unavailable."
+
+        -- Errored.pageLoadError (Debug.log "request" (toString e))
+    in
+    Task.map initModel
+        getSongID
+        |> Task.mapError handleLoadError
 
 
 type Msg
-    = Load YTPlayerID YouTubeID
+    = Load
     | ChangePlayerStatus PlayerStatus
     | UpdatePlayerStatus PlayerStatus
     | UpdatePlayerTime Time
     | SeekToPosition Time
     | Tick Time
-    | ScrollingToY Float
+    | ScrollingToY
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -66,26 +72,17 @@ update msg model =
         Tick _ ->
             model ! [ Ports.pushDataToJS Ports.GetPlayerCurrTime ]
 
-        Load playerID youTubeID ->
-            model ! [ Ports.pushDataToJS <| Ports.LoadYouTubeVideo playerID youTubeID ]
+        Load ->
+            model ! [ Ports.pushDataToJS <| Ports.LoadYouTubeVideo model.playerID model.id.ytid ]
 
         ChangePlayerStatus playerStatus ->
             if playerStatus == Player.Ended then
-                let
-                    next =
-                        case model.currChord of
-                            Nothing ->
-                                model.nextChords
-
-                            Just curr ->
-                                model.playedChords ++ (curr :: model.nextChords)
-                in
                 { model
                     | playedChords = []
                     , currChord = Nothing
-                    , nextChords = next
+                    , nextChords = getAllChords model
                 }
-                    ! [ Ports.pushDataToJS <| Ports.SetPlayerState playerStatus, scrollToY 0 ]
+                    ! [ Ports.pushDataToJS <| Ports.SetPlayerState playerStatus, scrollToTop diplayChordDomID ]
             else
                 model ! [ Ports.pushDataToJS <| Ports.SetPlayerState playerStatus ]
 
@@ -101,61 +98,56 @@ update msg model =
 
                         Just chord ->
                             model.playedChords ++ chord :: []
+            in
+            if playerTime > ChordTime.getTime model.currChord then
+                case model.nextChords of
+                    x :: xs ->
+                        { model | playerTime = Just playerTime, playedChords = getplayed, currChord = Just x, nextChords = xs }
+                            ! [ scrolling <| List.length model.playedChords + 1 ]
 
-                ( played, curr, next, cmd ) =
-                    if playerTime > ChordTime.getTime model.currChord then
-                        case model.nextChords of
-                            x :: xs ->
-                                ( getplayed
-                                , Just x
-                                , xs
-                                , [ scrolling model.scrollPos <| List.length model.playedChords + 1 ]
-                                )
+                    [] ->
+                        -- Chords ENDED
+                        { model | playerTime = Just playerTime, playedChords = [], currChord = Nothing, nextChords = getplayed }
+                            ! [ Ports.pushDataToJS <| Ports.SetPlayerState Player.Ended, scrollToTop diplayChordDomID ]
+            else
+                { model | playerTime = Just playerTime }
+                    ! []
 
-                            [] ->
-                                -- Chords ENDED
-                                ( []
-                                , Nothing
-                                , getplayed
-                                , [ Ports.pushDataToJS <| Ports.SetPlayerState Player.Ended, scrollToY 0 ]
-                                )
-                    else
-                        ( model.playedChords
-                        , model.currChord
-                        , model.nextChords
-                        , [ Cmd.none ]
-                        )
+        SeekToPosition seekToTime ->
+            let
+                ( before, after ) =
+                    getAllChords model
+                        |> List.partition
+                            (\( _, t ) -> t < seekToTime)
+
+                ( curr, next ) =
+                    case after of
+                        x :: xs ->
+                            ( Just x, xs )
+
+                        [] ->
+                            ( Nothing, [] )
             in
             { model
-                | playerTime = Just playerTime
-                , playedChords = played
+                | playedChords = before
                 , currChord = curr
                 , nextChords = next
             }
-                ! cmd
+                ! [ Ports.pushDataToJS <| Ports.SeekTo seekToTime, scrollToY (getScrollYPos <| List.length before) diplayChordDomID ]
 
-        SeekToPosition seekToTime ->
-            model ! [ Ports.pushDataToJS <| Ports.SeekTo seekToTime ]
-
-        ScrollingToY currScrollPos ->
-            { model | scrollPos = currScrollPos } ! []
+        ScrollingToY ->
+            model ! []
 
 
-scrolling : Float -> Int -> Cmd Msg
-scrolling currPos totalChordsPlayed =
+scrolling : Int -> Cmd Msg
+scrolling totalChordsPlayed =
     if totalChordsPlayed > 8 then
         if totalChordsPlayed % 8 == 0 then
-            scrollToY (currPos + 55)
+            scrollToY (getScrollYPos totalChordsPlayed) diplayChordDomID
         else
             Cmd.none
     else
         Cmd.none
-
-
-scrollToY : Float -> Cmd Msg
-scrollToY pos =
-    Scroll.toY diplayChordID pos
-        |> Task.attempt (always (ScrollingToY pos))
 
 
 view : Model -> E.Element S.Styles variation Msg
@@ -164,7 +156,7 @@ view model =
         []
         [ displayTitle model
         , displayChords model
-        , displayControl model
+        , displayControl model.playerStatus
         , clearSpaceYouTubeVideo propsYouTubeDisplay
         , diplayYouTubeVideo model propsYouTubeDisplay
         ]
@@ -174,7 +166,11 @@ view model =
 -----------------------------------------------------------------------------------
 
 
-displayTitle : Model -> E.Element S.Styles variation msg
+type alias Title r =
+    { r | id : SongID }
+
+
+displayTitle : Title r -> E.Element S.Styles variation msg
 displayTitle { id } =
     E.h1 S.Title [ A.paddingXY 10 20 ] <| E.text id.title
 
@@ -183,33 +179,43 @@ displayTitle { id } =
 -----------------------------------------------------------------------------------
 
 
-diplayChordID : Dom.Id
-diplayChordID =
-    "diplayChordID"
+type alias Chords r =
+    { r
+        | playedChords : List ChordTime
+        , currChord : Maybe ChordTime
+        , nextChords : List ChordTime
+    }
 
 
-displayChords : Model -> E.Element S.Styles variation Msg
-displayChords playerModel =
-    E.el S.None
-        [ A.height <| A.px 150
-        , A.clip
-        , A.id diplayChordID
-        , A.inlineStyle [ ( "scroll-behavior", "smooth" ) ]
+getAllChords : Chords r -> List ChordTime
+getAllChords { playedChords, currChord, nextChords } =
+    case currChord of
+        Nothing ->
+            nextChords
+
+        Just curr ->
+            playedChords ++ (curr :: nextChords)
+
+
+displayChords : Chords r -> E.Element S.Styles variation Msg
+displayChords chords =
+    E.grid S.ChordGridContainer
+        [ A.spacing 10
+        , A.padding 10
         ]
-    <|
-        E.grid S.ChordGridContainer
-            [ A.spacing 10
-            , A.padding 10
-
-            -- , A.moveUp <| toFloat (List.length playerModel.playedChords // 8) * 50
+        { columns = List.repeat 8 A.fill
+        , rows = []
+        , cells = chordsGridCells chords
+        }
+        |> E.el S.None
+            [ A.height <| A.px 150
+            , A.clip
+            , A.id diplayChordDomID
+            , A.inlineStyle [ ( "scroll-behavior", "smooth" ) ]
             ]
-            { columns = List.repeat 8 A.fill
-            , rows = []
-            , cells = chordsGridCells playerModel
-            }
 
 
-chordsGridCells : Model -> List (E.OnGrid (E.Element S.Styles variation Msg))
+chordsGridCells : Chords r -> List (E.OnGrid (E.Element S.Styles variation Msg))
 chordsGridCells { playedChords, currChord, nextChords } =
     let
         played =
@@ -242,14 +248,13 @@ mapChords activeInactive start idx ( chord, time ) =
         , content =
             E.el (S.ChordItem activeInactive)
                 [ A.paddingXY 0 10, Events.onClick <| SeekToPosition time ]
-                (E.el S.None
-                    [ A.center
-                    , A.verticalCenter
-                    , A.height <| A.px 20
-                    ]
-                 <|
-                    E.text <|
-                        ChordTime.chordName chord
+                (ChordTime.chordName chord
+                    |> E.text
+                    |> E.el S.None
+                        [ A.center
+                        , A.verticalCenter
+                        , A.height <| A.px 20
+                        ]
                 )
         }
 
@@ -258,16 +263,16 @@ mapChords activeInactive start idx ( chord, time ) =
 -----------------------------------------------------------------------------------
 
 
-displayControl : Model -> E.Element S.Styles variation Msg
-displayControl model =
-    E.row S.None [ A.spacing 10, A.padding 20, A.center ] <| controlButtons model
+displayControl : PlayerStatus -> E.Element S.Styles variation Msg
+displayControl playerStatus =
+    E.row S.None [ A.spacing 10, A.padding 20, A.center ] <| controlButtons playerStatus
 
 
-controlButtons : Model -> List (E.Element S.Styles variation Msg)
-controlButtons { id, playerID, playerStatus } =
+controlButtons : PlayerStatus -> List (E.Element S.Styles variation Msg)
+controlButtons playerStatus =
     case playerStatus of
         Player.NotLoaded ->
-            [ Utils.button "Play" (Load playerID id.ytid)
+            [ Utils.button "Play" Load
             , Utils.disabledButton "Stop"
             ]
 
@@ -312,6 +317,10 @@ stopButton =
 -----------------------------------------------------------------------------------
 
 
+type alias YouTubeVideo r =
+    { r | id : SongID, playerID : YTPlayerID }
+
+
 type alias PropsYouTubeDisplay =
     { pad : Float, ht : Float, wd : Float }
 
@@ -321,26 +330,59 @@ propsYouTubeDisplay =
     PropsYouTubeDisplay 10 180 320
 
 
-diplayYouTubeVideo : Model -> PropsYouTubeDisplay -> E.Element S.Styles variation msg
+diplayYouTubeVideo : YouTubeVideo r -> PropsYouTubeDisplay -> E.Element S.Styles variation msg
 diplayYouTubeVideo { id, playerID } props =
-    E.screen <|
-        E.el S.YouTubeSpace
+    ViewSong.displaySongImg id
+        |> E.el S.YouTubeSpace
             [ A.id <| Player.ytPlayerIDToString playerID
             , A.alignBottom
             , A.padding props.pad
             , A.height <| A.px <| props.ht + props.pad * 2
             , A.width <| A.px <| props.wd + props.pad * 2
             ]
-        <|
-            ViewSong.displaySongImg id
+        |> E.screen
 
 
 clearSpaceYouTubeVideo : PropsYouTubeDisplay -> E.Element S.Styles variation msg
 clearSpaceYouTubeVideo props =
-    E.el S.None
-        [ A.padding props.pad
-        , A.height <| A.px <| props.ht + props.pad * 2
-        , A.width <| A.px <| props.wd + props.pad * 2
-        ]
-    <|
-        E.text ""
+    E.text ""
+        |> E.el S.None
+            [ A.padding props.pad
+            , A.height <| A.px <| props.ht + props.pad * 2
+            , A.width <| A.px <| props.wd + props.pad * 2
+            ]
+
+
+
+---------------------------------------------------------------------------------------------------
+-- UTILITIES
+---------------------------------------------------------------------------------------------------
+
+
+diplayChordDomID : Dom.Id
+diplayChordDomID =
+    "diplayChordID"
+
+
+
+---> SCROLLING
+
+
+getScrollYPos : Int -> Float
+getScrollYPos idx =
+    toFloat ((idx // 8) - 1) * 55
+
+
+scrollToTop : Dom.Id -> Cmd Msg
+scrollToTop =
+    scrollToY 0
+
+
+scrollToY : Float -> Dom.Id -> Cmd Msg
+scrollToY pos domID =
+    Scroll.toY domID pos
+        |> Task.attempt (always ScrollingToY)
+
+
+
+---------------------------------------------------------------------------------------------------

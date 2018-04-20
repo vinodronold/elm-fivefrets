@@ -27,7 +27,7 @@ frame frameConfig pageContent =
                 [ appNav frameConfig.navOpen
                 , E.column S.None
                     [ A.width A.fill ]
-                    [ topBar frameConfig "Home Page"
+                    [ topBar frameConfig
                     , E.mainContent S.None [ A.verticalCenter, A.padding 50 ] <| pageContent
                     ]
                 ]
@@ -62,19 +62,19 @@ appNav navOpen =
         }
 
 
-topBar : FrameConfig msg -> String -> E.Element S.Styles variation msg
-topBar frameConfig title =
+topBar : FrameConfig msg -> E.Element S.Styles variation msg
+topBar frameConfig =
     let
         topContent =
             if frameConfig.isLoading then
                 "Loading  . . ."
             else
-                title
+                ""
     in
     E.row S.TopBar
         [ A.padding 10, A.spacing 10, A.verticalCenter ]
         [ E.el S.None [ A.alignLeft ] <| menuIcon frameConfig --E.text "X"
-        , E.el S.None [ A.spread ] <| E.text (Debug.log "topContent" topContent)
+        , E.el S.None [ A.spread ] <| E.text topContent
         ]
 
 
