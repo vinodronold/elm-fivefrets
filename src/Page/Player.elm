@@ -17,6 +17,7 @@ import Task exposing (Task)
 import Time exposing (Time)
 import View.Songs as ViewSong
 import View.Utils as Utils
+import Window
 
 
 type alias Model =
@@ -26,6 +27,7 @@ type alias Model =
     , playedChords : List ChordTime
     , currChord : Maybe ChordTime
     , nextChords : List ChordTime
+    , device : E.Device
     , id : SongID
     }
 
@@ -46,12 +48,16 @@ load youTubeID =
                 |> Player.videoDetails
                 |> Http.toTask
 
+        windowSize =
+            Task.map E.classifyDevice Window.size
+
         handleLoadError e =
             Errored.pageLoadError "Chords Player is currently unavailable."
 
         -- Errored.pageLoadError (Debug.log "request" (toString e))
     in
-    Task.map initModel
+    Task.map2 initModel
+        windowSize
         getSongID
         |> Task.mapError handleLoadError
 
@@ -64,6 +70,7 @@ type Msg
     | SeekToPosition Time
     | Tick Time
     | ScrollingToY
+    | WindowResize Window.Size
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -138,6 +145,9 @@ update msg model =
         ScrollingToY ->
             model ! []
 
+        WindowResize size ->
+            { model | device = E.classifyDevice size } ! []
+
 
 scrolling : Int -> Cmd Msg
 scrolling totalChordsPlayed =
@@ -172,7 +182,7 @@ type alias Title r =
 
 displayTitle : Title r -> E.Element S.Styles variation msg
 displayTitle { id } =
-    E.h1 S.Title [ A.paddingXY 10 20 ] <| E.text id.title
+    E.h1 S.Title [ A.paddingXY 10 20 ] <| E.paragraph S.None [] [ E.text id.title ]
 
 
 
@@ -184,6 +194,7 @@ type alias Chords r =
         | playedChords : List ChordTime
         , currChord : Maybe ChordTime
         , nextChords : List ChordTime
+        , device : E.Device
     }
 
 
@@ -203,7 +214,7 @@ displayChords chords =
         [ A.spacing 10
         , A.padding 10
         ]
-        { columns = List.repeat 8 A.fill
+        { columns = List.repeat (blocks chords.device) A.fill
         , rows = []
         , cells = chordsGridCells chords
         }
@@ -216,10 +227,10 @@ displayChords chords =
 
 
 chordsGridCells : Chords r -> List (E.OnGrid (E.Element S.Styles variation Msg))
-chordsGridCells { playedChords, currChord, nextChords } =
+chordsGridCells { playedChords, currChord, nextChords, device } =
     let
         played =
-            List.indexedMap (mapChords S.Inactive 0) playedChords
+            List.indexedMap (mapChords device S.Inactive 0) playedChords
 
         ( nextStart, curr ) =
             case currChord of
@@ -230,19 +241,19 @@ chordsGridCells { playedChords, currChord, nextChords } =
 
                 Just chord ->
                     ( List.length playedChords + 1
-                    , List.indexedMap (mapChords S.Active <| List.length playedChords) <| chord :: []
+                    , List.indexedMap (mapChords device S.Active <| List.length playedChords) <| chord :: []
                     )
 
         next =
-            List.indexedMap (mapChords S.Inactive nextStart) nextChords
+            List.indexedMap (mapChords device S.Inactive nextStart) nextChords
     in
     played ++ curr ++ next
 
 
-mapChords : S.ActiveInactive -> Int -> Int -> ChordTime -> E.OnGrid (E.Element S.Styles variation Msg)
-mapChords activeInactive start idx ( chord, time ) =
+mapChords : E.Device -> S.ActiveInactive -> Int -> Int -> ChordTime -> E.OnGrid (E.Element S.Styles variation Msg)
+mapChords device activeInactive start idx ( chord, time ) =
     E.cell
-        { start = ( (start + idx) % 8, (start + idx) // 8 )
+        { start = ( (start + idx) % blocks device, (start + idx) // blocks device )
         , width = 1
         , height = 1
         , content =
@@ -362,6 +373,14 @@ clearSpaceYouTubeVideo props =
 diplayChordDomID : Dom.Id
 diplayChordDomID =
     "diplayChordID"
+
+
+blocks : E.Device -> Int
+blocks { tablet, phone } =
+    if phone || tablet then
+        4
+    else
+        8
 
 
 

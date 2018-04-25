@@ -6,6 +6,7 @@ import Html exposing (Html)
 import Navigation exposing (Location)
 import Page.Errored as Errored
 import Page.Home as Home
+import Page.Loading as PageLoading
 import Page.Player as Player
 import Ports
 import Route exposing (Route)
@@ -13,6 +14,7 @@ import Styles as S
 import Task exposing (Task)
 import Time exposing (Time)
 import View.Master as Master
+import Window
 
 
 type Page
@@ -24,7 +26,7 @@ type Page
 
 
 type PageState
-    = Loading
+    = Loading PageLoading.Model
     | Loaded Page
 
 
@@ -46,7 +48,7 @@ init : Location -> ( Model, Cmd Msg )
 init location =
     setRoute (Route.fromLocation location)
         { navOpen = False
-        , pageState = Loading
+        , pageState = Loading PageLoading.getInitModel
         }
 
 
@@ -60,16 +62,22 @@ type Msg
     | HomeLoaded (Result Errored.PageLoadError Home.Model)
     | PlayerLoaded (Result Errored.PageLoadError Player.Model)
     | PlayerMsg Player.Msg
+    | PageLoadingMsg PageLoading.Msg
     | PortMsg Ports.JSDataIn
     | PortErr String
+    | WindowResize Window.Size
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    updatePage (getPage model.pageState) msg model
+    updatePage model.pageState msg model
 
 
-updatePage : Page -> Msg -> Model -> ( Model, Cmd Msg )
+
+-- updatePage (getPage model.pageState) msg model
+
+
+updatePage : PageState -> Msg -> Model -> ( Model, Cmd Msg )
 updatePage page msg model =
     case ( msg, page ) of
         ( SetRoute route, _ ) ->
@@ -93,7 +101,16 @@ updatePage page msg model =
         ( PlayerLoaded (Err errMessage), _ ) ->
             { model | pageState = Loaded (Errored errMessage) } ! []
 
-        ( PortMsg jsDataIn, Player playerModel ) ->
+        ( WindowResize size, Loaded (Player playerModel) ) ->
+            let
+                ( subModel, subCmd ) =
+                    Player.update
+                        (Player.WindowResize size)
+                        playerModel
+            in
+            { model | pageState = Loaded (Player subModel) } ! [ Cmd.map PlayerMsg subCmd ]
+
+        ( PortMsg jsDataIn, Loaded (Player playerModel) ) ->
             case jsDataIn of
                 Ports.JSPlayerStatus jsPlayerStatus ->
                     let
@@ -113,14 +130,21 @@ updatePage page msg model =
                     in
                     { model | pageState = Loaded (Player subModel) } ! [ Cmd.map PlayerMsg subCmd ]
 
-        ( PlayerMsg playerMsg, Player playerModel ) ->
+        ( PlayerMsg playerMsg, Loaded (Player playerModel) ) ->
             let
                 ( subModel, subCmd ) =
                     Player.update playerMsg playerModel
             in
             { model | pageState = Loaded (Player subModel) } ! [ Cmd.map PlayerMsg subCmd ]
 
-        ( _, NotFound ) ->
+        ( PageLoadingMsg loadingMsg, Loading loadingModel ) ->
+            let
+                subModel =
+                    PageLoading.update loadingMsg loadingModel
+            in
+            { model | pageState = Loading subModel } ! []
+
+        ( _, Loaded NotFound ) ->
             -- Disregard incoming messages when we're on the
             -- NotFound page.
             model ! []
@@ -137,15 +161,19 @@ updatePage page msg model =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ pageSubscriptions <| getPage model.pageState
+        [ pageSubscriptions <| model.pageState
         , Ports.pullJSDataToElm PortMsg PortErr
+        , Window.resizes WindowResize
         ]
 
 
-pageSubscriptions : Page -> Sub Msg
-pageSubscriptions page =
-    case page of
-        Player playerModel ->
+pageSubscriptions : PageState -> Sub Msg
+pageSubscriptions pageState =
+    case pageState of
+        Loading _ ->
+            Sub.map PageLoadingMsg <| Time.every (Time.second * 0.5) PageLoading.Tick
+
+        Loaded (Player playerModel) ->
             if playerModel.playerStatus == PlayerData.Playing then
                 Sub.map PlayerMsg <| Time.every (Time.second * 0.1) Player.Tick
             else
@@ -161,7 +189,7 @@ getPage pageState =
         Loaded page ->
             page
 
-        Loading ->
+        Loading _ ->
             Blank
 
 
@@ -177,8 +205,8 @@ view model =
                 { navOpen = model.navOpen, isLoading = isLoading, menuMsg = ToggleMenu }
     in
     case model.pageState of
-        Loading ->
-            masterFrame True <| E.el S.None [] (E.text "*** Loading ***")
+        Loading loadingModel ->
+            masterFrame True <| PageLoading.loading loadingModel
 
         Loaded NotFound ->
             masterFrame False <| E.el S.None [] (E.text "*** NotFound ***")
@@ -206,10 +234,14 @@ setRoute maybeRoute model =
             model ! [ Route.modifyUrl Route.Home ]
 
         Just Route.Home ->
-            { model | navOpen = False, pageState = Loading } ! [ Task.attempt HomeLoaded Home.load ]
+            { model | navOpen = False, pageState = Loading PageLoading.getInitModel }
+                ! [ Task.attempt HomeLoaded Home.load
+                  ]
 
         Just (Route.Player youTubeID) ->
-            { model | navOpen = False, pageState = Loading } ! [ Task.attempt PlayerLoaded <| Player.load youTubeID ]
+            { model | navOpen = False, pageState = Loading PageLoading.getInitModel }
+                ! [ Task.attempt PlayerLoaded <| Player.load youTubeID
+                  ]
 
 
 

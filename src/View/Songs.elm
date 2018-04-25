@@ -17,11 +17,11 @@ displaySong : Data.SongID -> E.Element S.Styles variation msg
 displaySong song =
     E.link (Route.href <| Route.Player song.ytid) <|
         E.row S.SongItem
-            [ A.spacing 20 ]
+            [ A.spacing 5 ]
             [ displaySongImg song
             , E.column S.None
                 [ A.spacing 5, A.verticalCenter ]
-                [ E.el S.None [] <| E.text song.title
+                [ E.paragraph S.None [ A.paddingXY 10 0 ] [ E.text song.title ]
                 ]
             ]
 

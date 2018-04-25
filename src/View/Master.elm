@@ -28,7 +28,7 @@ frame frameConfig pageContent =
                 , E.column S.None
                     [ A.width A.fill ]
                     [ topBar frameConfig
-                    , E.mainContent S.None [ A.verticalCenter, A.padding 50 ] <| pageContent
+                    , E.el S.None [ A.verticalCenter, A.padding 10 ] <| pageContent
                     ]
                 ]
             ]

@@ -25,6 +25,7 @@ type Styles
     | ChordGridContainer
     | ChordItem ActiveInactive
     | YouTubeSpace
+    | LoadingBox
 
 
 type ActiveInactive
@@ -149,6 +150,16 @@ stylesheet =
             , Shadow.simple
             ]
         , S.style YouTubeSpace []
+        , S.style LoadingBox
+            [ Color.background appColors.primary
+            , Transition.transitions
+                [ { delay = 0
+                  , duration = 1000
+                  , easing = "ease-in-out"
+                  , props = [ "height" ]
+                  }
+                ]
+            ]
         ]
 
 
