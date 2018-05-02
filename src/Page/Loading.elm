@@ -50,7 +50,7 @@ loading { count } =
 loadingBox : Bool -> E.Element S.Styles variation msg
 loadingBox b =
     E.el S.LoadingBox
-        [ A.width <| A.px 10
+        [ A.width <| A.px 5
         , A.height <| A.px <| getBoxHeight b
         ]
         E.empty

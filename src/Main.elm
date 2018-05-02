@@ -90,6 +90,7 @@ updatePage page msg model =
             model ! []
 
         ( HomeLoaded (Ok homeModel), _ ) ->
+            -- { model | pageState = Loading PageLoading.getInitModel } ! []
             { model | pageState = Loaded (Home homeModel) } ! []
 
         ( HomeLoaded (Err errMessage), _ ) ->

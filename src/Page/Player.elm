@@ -110,7 +110,7 @@ update msg model =
                 case model.nextChords of
                     x :: xs ->
                         { model | playerTime = Just playerTime, playedChords = getplayed, currChord = Just x, nextChords = xs }
-                            ! [ scrolling <| List.length model.playedChords + 1 ]
+                            ! [ scrolling (List.length model.playedChords + 1) (getBlocks model.device) ]
 
                     [] ->
                         -- Chords ENDED
@@ -140,7 +140,9 @@ update msg model =
                 , currChord = curr
                 , nextChords = next
             }
-                ! [ Ports.pushDataToJS <| Ports.SeekTo seekToTime, scrollToY (getScrollYPos <| List.length before) diplayChordDomID ]
+                ! [ Ports.pushDataToJS <| Ports.SeekTo seekToTime
+                  , scrollToY (getScrollYPos (List.length before) (getBlocks model.device)) diplayChordDomID
+                  ]
 
         ScrollingToY ->
             model ! []
@@ -149,11 +151,11 @@ update msg model =
             { model | device = E.classifyDevice size } ! []
 
 
-scrolling : Int -> Cmd Msg
-scrolling totalChordsPlayed =
-    if totalChordsPlayed > 8 then
-        if totalChordsPlayed % 8 == 0 then
-            scrollToY (getScrollYPos totalChordsPlayed) diplayChordDomID
+scrolling : Int -> Int -> Cmd Msg
+scrolling totalChordsPlayed blocks =
+    if totalChordsPlayed > blocks then
+        if totalChordsPlayed % blocks == 0 then
+            scrollToY (getScrollYPos totalChordsPlayed blocks) diplayChordDomID
         else
             Cmd.none
     else
@@ -214,7 +216,7 @@ displayChords chords =
         [ A.spacing 10
         , A.padding 10
         ]
-        { columns = List.repeat (blocks chords.device) A.fill
+        { columns = List.repeat (getBlocks chords.device) A.fill
         , rows = []
         , cells = chordsGridCells chords
         }
@@ -253,7 +255,7 @@ chordsGridCells { playedChords, currChord, nextChords, device } =
 mapChords : E.Device -> S.ActiveInactive -> Int -> Int -> ChordTime -> E.OnGrid (E.Element S.Styles variation Msg)
 mapChords device activeInactive start idx ( chord, time ) =
     E.cell
-        { start = ( (start + idx) % blocks device, (start + idx) // blocks device )
+        { start = ( (start + idx) % getBlocks device, (start + idx) // getBlocks device )
         , width = 1
         , height = 1
         , content =
@@ -348,8 +350,8 @@ diplayYouTubeVideo { id, playerID } props =
             [ A.id <| Player.ytPlayerIDToString playerID
             , A.alignBottom
             , A.padding props.pad
-            , A.height <| A.px <| props.ht + props.pad * 2
-            , A.width <| A.px <| props.wd + props.pad * 2
+            , A.maxHeight <| A.px <| props.ht + props.pad * 2
+            , A.maxWidth <| A.px <| props.wd + props.pad * 2
             ]
         |> E.screen
 
@@ -375,8 +377,8 @@ diplayChordDomID =
     "diplayChordID"
 
 
-blocks : E.Device -> Int
-blocks { tablet, phone } =
+getBlocks : E.Device -> Int
+getBlocks { tablet, phone } =
     if phone || tablet then
         4
     else
@@ -387,9 +389,9 @@ blocks { tablet, phone } =
 ---> SCROLLING
 
 
-getScrollYPos : Int -> Float
-getScrollYPos idx =
-    toFloat ((idx // 8) - 1) * 55
+getScrollYPos : Int -> Int -> Float
+getScrollYPos idx blocks =
+    toFloat ((idx // blocks) - 1) * 55
 
 
 scrollToTop : Dom.Id -> Cmd Msg
